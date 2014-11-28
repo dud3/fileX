@@ -2,34 +2,28 @@
 
 class FileRepository implements FileRepositoryInterface {
 
-	/*
 	public $notifcations;
 	private $user;
 	private $company;
 	private $workitem;
 	private $training;
 	private $profile;
-	*/
 
 	public function __construct(
-			/*
 				_notificationInterface $notifications,
 				UserRepositoryInterface $user, 
 				CompanyRepositoryInterface $company,
 				WorkitemRepositoryInterface $workitem, 
 				TrainingRepositoryInterface $training,
 				ProfileRepositoryInterface $profile
-			*/
 		) {
 
-		/*
 		$this->notifications = $notifications;
 		$this->user = $user;
 		$this->company = $company;
 		$this->workitem = $workitem;
 		$this->training = $training;
 		$this->profile = $profile;
-		*/
 	}
 
 
@@ -195,11 +189,40 @@ class FileRepository implements FileRepositoryInterface {
 			$user = $this->user->getUserByID($user);
 		}
 
+		$user->owner_id = $this->user->getCurrentUser()->id;
+
 		$file = FSX::upload($data, $user, $addit_data);
+
 		return $file;
 
 	}
 
+	 /**
+     * Clone the same files, but might use different parametrs also.
+     * Such parameters might/can be:
+     * * user_id
+     * * item_id(workitem_id, training_id, notification_id...)
+     * 
+     * @param  {[type]} file [file_id,
+     *                        private_token, 
+     *                        url, 
+     *                        filename, 
+     *                        full_filename, 
+     *                        cut_full_filenamem, 
+     *                        descriptionm, 
+     *                        folder_idm, 
+     *                        parent_folderm, 
+     *                        folder, 
+     *                        download_url,
+     *                        size, 
+     *                        created_at]
+     *                        
+     * @return {[object]}      [check the getRandomString() method in fileSystemX.php library]
+     */
+	public function clone_file($file, $owner = null) {
+		$owner = $this->user->getCurrentUser()->id;
+		return FSX::clone_file($file, $owner);
+	}
 
 	/**
 	 * Download file based on token or ID.
@@ -267,9 +290,9 @@ class FileRepository implements FileRepositoryInterface {
 	 * @param  [type] $id [description]
 	 * @return [type]     [description]
 	 */
-	public function destroy($id, $user = null) {
+	public function destroy($file, $user = null) {
 		$user =$this->user->getCurrentUser();
-		return FSX::destroy($id, $user);
+		return FSX::destroy($file, $user);
 	}
 
 }

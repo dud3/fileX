@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 /**
  * FileSystem manager.
@@ -52,7 +52,7 @@ class FilesystemX {
 
 
 	/**
-	 * Destination folder on current local server.(where the app resides). 
+	 * Destination folder on current local server.(where the app resides).
 	 * @var [string]
 	 */
 	private $destination_folder_local;
@@ -89,27 +89,30 @@ class FilesystemX {
 	/**
 	 * List of default folders and their child.
 	 * @var [type]
-	 */
+	*/
 	private $default_folders = [
-									"User" => [],
-									"Misc" => [], 
-									"Workitem" => [], 
 
-									"Training" => 
-										[
-											"Continuation Training",						   
-											"Type Training",
-											"Basic Training",
-											"Company Training",
-											"Other Training"
-										], 	
+				"User" => [],
+				"Misc" => [],
+				"Workitem" => [],
 
-									"License" => [], 
-									"Courses" => [], 
-									"Report" => [], 
-									"Aircraft" => [],
-									"Employment/CV" => []
-								];
+				"Training" => [
+
+						"Continuation Training",
+						"Type Training",
+						"Basic Training",
+						"Company Training",
+						"Other Training"
+
+					],
+
+				"License" => [],
+				"Courses" => [],
+				"Report" => [],
+				"Aircraft" => [],
+				"Employment/CV" => []
+
+			];
 
 
 	/**
@@ -149,7 +152,14 @@ class FilesystemX {
 	*/
 	public $file = array();
 
-	
+
+	/**
+	 * Container of files.
+	 * @var array
+	 */
+	public $files = array();
+
+
 	/**
 	 * File object from the request.
 	 */
@@ -211,11 +221,11 @@ class FilesystemX {
 	 * @var [interface]
 	 *
 	 * $training Repositories Interface.
-	 * @var [interface] 
+	 * @var [interface]
 	 *
 	 * $profile Repositories Interface.
 	 * @var [interface]
-	 * 
+	 *
 	 */
 	private $_notifcations;
 	private $user;
@@ -238,7 +248,7 @@ class FilesystemX {
 		$this->createDefaultFolders();
 
 	}
- 	
+
 
 	/**
 	 * Eager Eloquent way of main query.
@@ -256,10 +266,10 @@ class FilesystemX {
 	 */
 	public function classicMainQuery() {
 
-		$sql_string = 			
+		$sql_string =
 
 			"SELECT f.id AS file_id, f.private_token, f.url, f.filename, f.full_filename, f.description, f.uploader,
-					f_r.user_id, f_r.training_id, f_r.license_id, f_r.workitem_id, f_r.aircraft_id,
+					f_r.user_id, f_r.owner_id, f_r.training_id, f_r.license_id, f_r.workitem_id, f_r.aircraft_id,
 					f.expires, f.public_allow, f.created_at, f.updated_at,
 					fo.id AS folder_id, fo.name AS folder_name, fo.parent AS folder_parent,
 					DATE_FORMAT(f_r.created_at, '%d/%m/%Y') AS created_at
@@ -271,7 +281,7 @@ class FilesystemX {
 
 				LEFT JOIN folders fo
 					ON f_r.folder_id = fo.id";
-					
+
 
 		return $sql_string;
 
@@ -325,35 +335,35 @@ class FilesystemX {
 	// ---------------------------------------------------
 	// Folder/Tree Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Folder/Tree nesscecary
 	// -> manipulations goes here...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
 	 * Get the full tree structure.
-	 * All the folders and sub-folders. 
+	 * All the folders and sub-folders.
 	 * @return [type] [description]
 	 */
 	public function getFullTree() {
 
 		$sql_full_tree = DB::select(
-			
+
 			"SELECT t1.name AS lev1, t1.id as lev1_id,
-					t2.name as lev2, t2.id as lev2_id, 
-					t3.name as lev3  t3.id as lev3_id, 
+					t2.name as lev2, t2.id as lev2_id,
+					t3.name as lev3  t3.id as lev3_id,
 					t4.name as lev4, t4.id as lev4_id
 
 			FROM folders AS t1
 
-				LEFT JOIN folder AS t2 
+				LEFT JOIN folder AS t2
 					ON t2.parent = t1.id
 
-				LEFT JOIN folder AS t3 
+				LEFT JOIN folder AS t3
 					ON t3.parent = t2.id
 
-				LEFT JOIN folder AS t4 
+				LEFT JOIN folder AS t4
 					ON t4.parent = t3.id
 
 			WHERE t1.name = 'User'"
@@ -362,41 +372,41 @@ class FilesystemX {
 
 		return $sql_full_tree;
 
-	} 
+	}
 
 
 	/**
 	 * Get the full tree structure.
-	 * All the folders and sub-folders. 
+	 * All the folders and sub-folders.
 	 * @return [type] [description]
 	 */
 	public function getFullTreePerUser() {
 
 		$sql_full_tree = DB::select(
-			
+
 			"SELECT t1.name AS lev1, t1.id as lev1_id,
-					t2.name as lev2, t2.id as lev2_id, 
-					t3.name as lev3  t3.id as lev3_id, 
+					t2.name as lev2, t2.id as lev2_id,
+					t3.name as lev3  t3.id as lev3_id,
 					t4.name as lev4, t4.id as lev4_id
 
 			FROM folders AS t1
 
-				LEFT JOIN folder AS t2 
+				LEFT JOIN folder AS t2
 					ON t2.parent = t1.id
 
-				LEFT JOIN folder AS t3 
+				LEFT JOIN folder AS t3
 					ON t3.parent = t2.id
 
-				LEFT JOIN folder AS t4 
+				LEFT JOIN folder AS t4
 					ON t4.parent = t3.id
 
-			WHERE t1.name = 'User'" 
+			WHERE t1.name = 'User'"
 
 		);
 
 		return $sql_full_tree;
 
-	} 
+	}
 
 
 
@@ -409,9 +419,9 @@ class FilesystemX {
 
 		$sql_leaf_nodes = DB::select(
 
-			"SELECT t1.name 
+			"SELECT t1.name
 
-			FROM folders AS t1 
+			FROM folders AS t1
 
 			LEFT JOIN category as t2
 				ON t1.category_id = t2.parent
@@ -426,32 +436,32 @@ class FilesystemX {
 
 
 	/**
-	 * Get a sinle path/folder and it's 
+	 * Get a sinle path/folder and it's
 	 * -> child paths/folders.
 	 * @return [type] [description]
 	 */
 	public function getSinglePath($path_name) {
 
 		$sql_full_tree = DB::select(
-			
+
 				"SELECT t1.name AS lev1, t1.id as lev1_id,
-						t2.name as lev2, t2.id as lev2_id, 
-						t3.name as lev3  t3.id as lev3_id, 
+						t2.name as lev2, t2.id as lev2_id,
+						t3.name as lev3  t3.id as lev3_id,
 						t4.name as lev4, t4.id as lev4_id
 
 				FROM folders AS t1
 
-					LEFT JOIN folder AS t2 
+					LEFT JOIN folder AS t2
 						ON t2.parent = t1.id
 
-					LEFT JOIN folder AS t3 
+					LEFT JOIN folder AS t3
 						ON t3.parent = t2.id
 
-					LEFT JOIN folder AS t4 
+					LEFT JOIN folder AS t4
 						ON t4.parent = t3.id
 
 				WHERE t1.name = 'User'
-				AND t4.name = ?", 
+				AND t4.name = ?",
 
 		[$path_name]);
 
@@ -470,7 +480,7 @@ class FilesystemX {
 		$_folder_parent;
 		$_child_folders;
 
-		// Get each folder and 
+		// Get each folder and
 		// -> parent ids.
 		// A file can belong to a root folder
 		// -> and/or to the child folders.
@@ -480,12 +490,12 @@ class FilesystemX {
 
 					FROM file_relations f_r
 
-					LEFT JOIN folders fo 
+					LEFT JOIN folders fo
 						ON f_r.folder_id = fo.id
 
 				WHERE f_r.user_id = ?
 				AND f_r.folder_id <> ''"
-			
+
 		,[$user_id]);
 
 		// Get the parent folder
@@ -496,12 +506,12 @@ class FilesystemX {
 				FROM folders fo
 
 			WHERE fo.id IN(3, 4, 10, 13)
-			
+
 		");
 
-	
+
 		foreach ($_folder_parent as $parent) {
-			
+
 			// Get the child folder
 			$_folder_child = DB::select(
 
@@ -554,10 +564,10 @@ class FilesystemX {
 	// ---------------------------------------------------
 	// Files Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Files nesscecary
 	// -> manipulations goes here...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
@@ -579,53 +589,51 @@ class FilesystemX {
 
 
 	/**
+	 * Get file by it's attributes
+	 * @param  [type] $attributes [description]
+	 * @param  [type] $values 	  [description]
+	 * @return [type]             [description]
+	 */
+	public function getByAttribute($attributes, $rule) {
+
+		$query = $this->mainQuery();
+
+		foreach ($attributes as $key => $value) {
+			$query->where($key, $rule, $value);
+		}
+
+		return $query->get();
+
+	}
+
+
+	/**
+	 * Get Folder by name.
+	 * @param  [type] $folder_name [description]
+	 * @return [type]              [description]
+	 */
+	public function getFolderByName($folder_name) {
+		return FolderX::where("name", '=', $folder_name)->first();
+	}
+
+
+	/**
 	 * Get files by user.
 	 * @return [type] [description]
 	 */
 	public function getByUser($user_id) {
 
 		$sql = DB::select(
-		
+
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
+										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
+
 
 			ORDER BY file_id DESC",
 
 		[$user_id]);
 
-
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-
-				if($file->file_extension == "jpeg" 
-					|| $file->file_extension == "jpg" 
-					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
-					|| $file->file_extension == "gif") {
-
-					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
-
-				}
-
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
-
-		return $sql;
+		return $this->retrieveFiles($sql);
 
 	}
 
@@ -636,8 +644,9 @@ class FilesystemX {
 	public function getRecentFiles($user_id) {
 
 		$sql = DB::select(
-		
+
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
+										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
 
 			AND f_r.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 
@@ -645,40 +654,7 @@ class FilesystemX {
 
 		[$user_id]);
 
-
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-				
-				if($file->file_extension == "jpeg" 
-					|| $file->file_extension == "jpg"
-					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
-					|| $file->file_extension == "gif") {
-					
-					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
-
-				}
-
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
-
-		return $sql;
+		return $this->retrieveFiles($sql);
 
 	}
 
@@ -690,8 +666,9 @@ class FilesystemX {
 	public function getOldFiles($user_id) {
 
 		$sql = DB::select(
-		
+
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
+										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
 
 			AND f_r.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 
@@ -699,40 +676,7 @@ class FilesystemX {
 
 		[$user_id]);
 
-
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-				
-				if($file->file_extension == "jpeg" 
-					|| $file->file_extension == "jpg"
-					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
-					|| $file->file_extension == "gif") {
-					
-					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
-
-				}
-
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
-
-		return $sql;
+		return $this->retrieveFiles($sql);
 
 	}
 
@@ -745,47 +689,15 @@ class FilesystemX {
 	public function getTrainingFiles($training_id) {
 
 		$sql = DB::select(
-			
+
 			$this->classicMainQuery() . " WHERE f_r.training_id = ?
 
 			ORDER BY file_id DESC",
 
 		[$training_id]);
 
+		return $this->retrieveFiles($sql);
 
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-				
-				if($file->file_extension == "jpeg" 
-					|| $file->file_extension == "jpg"
-					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
-					|| $file->file_extension == "gif") {
-					
-					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
-
-				}
-
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
-
-		return $sql;
 	}
 
 
@@ -798,47 +710,15 @@ class FilesystemX {
 	public function getLicenseFiles($license_id) {
 
 		$sql = DB::select(
-			
+
 			$this->classicMainQuery() . " WHERE f_r.license_id = ?
 
 			ORDER BY file_id DESC",
 
 		[$license_id]);
 
+		return $this->retrieveFiles($sql);
 
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-				
-				if($file->file_extension == "jpeg"
-					|| $file->file_extension == "jpg"
-					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
-					|| $file->file_extension == "gif") {
-					
-					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
-
-				}
-
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
-
-		return $sql;
 	}
 
 
@@ -851,7 +731,7 @@ class FilesystemX {
 		$query = $this->mainQuery();
 
 		if($param === null) {
-			
+
 			$query = $this->getByUser();
 
 		} else {
@@ -903,35 +783,21 @@ class FilesystemX {
 	 * Get file by name.
 	 * @param  [type] $filename [description]
 	 * @return [type]           [description]
+	 *
+	 *	@todo More to be done here, laster on...
+	 *
 	 */
-	public function filterFiles($filename) {
+	public function filterFiles($data) {
 
 		$sql = DB::select(DB::raw(
-			
-			$this->classicMainQuery() . " WHERE f_r.folder_id LIKE '%" . $filename . "%'
+
+			$this->classicMainQuery() . " WHERE f_r.folder_id LIKE '%" . $data . "%'
 
 			ORDER BY file_id DESC"
 
 		));
 
-		foreach ($sql as $key => $file) {
-
-			$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
-			$file->file_exits = file_exists($file->full_file_path);
-
-			if(file_exists($file->full_file_path)) {
-				$file->size = $this->get_real_size($file->full_file_path);
-				$file->download_url = $this->file_download_route . $file->private_token;
-			} else {
-
-				// Not sure if we should splice
-				// the array if the real file does
-				// -> not exits...
-				array_splice($sql, $key, 1);
-
-			}
-
-		}
+		return $this->retrieveFiles($sql);
 
 	}
 
@@ -943,7 +809,7 @@ class FilesystemX {
 	public function getByFolder($folder_id, $user_id) {
 
 		$child_arr = [];
-		$sql_folders = ""; 
+		$sql_folders = "";
 
 		try {
 
@@ -951,7 +817,7 @@ class FilesystemX {
 			$sql_folders = " AND f_r.folder_id = " . $folder_id;
 
 			$check_child = DB::select(
-				
+
 				"SELECT id
 
 					FROM folders
@@ -970,13 +836,13 @@ class FilesystemX {
 			}
 
 			$sql = DB::select(
-				
-				$this->classicMainQuery() 
 
-				. " WHERE f_r.user_id = ? " 
+				$this->classicMainQuery()
 
-				. $sql_folders . 
-				
+				. " WHERE f_r.user_id = ? AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)"
+
+				. $sql_folders .
+
 				" ORDER BY f_r.file_id DESC "
 
 			,[$user_id]);
@@ -994,7 +860,7 @@ class FilesystemX {
 					// Not sure if we should splice
 					// the array if the real file does
 					// -> not exits...
-					array_splice($sql, $key, 1);
+					// array_splice($sql, $key, 1);
 
 				}
 
@@ -1014,6 +880,59 @@ class FilesystemX {
 		}
 	}
 
+
+	/**
+	 * Retrieve the actual files from SQL statements.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function retrieveFiles($files) {
+
+		//
+		// @note: We might actually not want to check if the file exits at all.
+		// This is because the file itself can be found by the "token" using the route of:
+		// `/api/v1/fileSystem/download/{token}` which will basically retrieve us the file.
+		//
+		// If we worry about permission we can always set the permission to:
+		// * owner = rwx
+		// * group = rx
+		// * others = null
+		//
+		foreach ($files as $key => $file) {
+
+			$file->full_file_path = $this->get_full_filename($file->owner_id, $file->url);
+			$file->file_exits = file_exists($file->full_file_path);
+
+			if(file_exists($file->full_file_path)) {
+
+				$file->size = $this->get_real_size($file->full_file_path);
+				$file->download_url = $this->file_download_route . $file->private_token;
+				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
+
+				if($file->file_extension == "jpeg"
+					|| $file->file_extension == "jpg"
+					|| $file->file_extension == "png"
+					|| $file->file_extension == "bmp"
+					|| $file->file_extension == "gif") {
+
+					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
+
+				}
+
+			} else {
+
+				// Not sure if we should splice
+				// the array if the real file does
+				// -> not exits...
+				// array_splice($sql, $key, 1);
+
+			}
+
+		}
+
+		return $files;
+
+	}
 
 
  	/**
@@ -1041,7 +960,10 @@ class FilesystemX {
 		$this->file['additional_file_data'] = new stdClass();
 		$this->file['additional_file_data']->folder = "";
 
+		// User data
 		$user_id = $user->id;
+		$owner_id = $user->owner_id;
+		$group_id = $user->group_id;
 		$user_name = $user->first_name . " " . $user->last_name;
 
 		// Prefix for the user files.
@@ -1065,14 +987,14 @@ class FilesystemX {
         ];
 
 		try {
-			
+
 			$this->check_destination();
 			$this->check_user_destination($this->destination_folder_user);
 
 				if($this->validate_file($valid_data)) {
 
 					if(in_array($this->file['mimetype'], $this->allowed_mimes)) {
-					
+
 						if($this->file['size'] < $this->maximum_file_size) {
 
 							if(!file_exists($this->full_path_filename)) {
@@ -1088,16 +1010,16 @@ class FilesystemX {
 									//
 									// Generate a PDF thumbnails and other type of image
 									// -> thumbnails.
-									// 
+									//
 									if($this->file["mimetype"] == "application/pdf") {
-										
+
 										$this->genPdfThumbnail($this->full_path_filename, $this->filename);
 
 									} elseif($this->file["mimetype"] == "image/jpeg" || $this->file["mimetype"] == "image/png"
 											 || $this->file["mimetype"] == "image/bmp" || $this->file["mimetype"] == "image/gif") {
 
 										$this->genImgThumbnail($this->full_path_filename, $this->filename);
-									
+
 									}
 
 									$file_model = FileX::create([
@@ -1113,10 +1035,10 @@ class FilesystemX {
 
 											// if we actually want to create a folder
 											/*
-											if(isset($this->file['additional_file_data']->folder) 
+											if(isset($this->file['additional_file_data']->folder)
 												&& !empty($this->file['additional_file_data']->folder)
 												&& strlen($this->file['additional_file_data']->folder) !== 0) {
-											
+
 												$folder_exists = FolderX::where('name', '=', $this->file['additional_file_data']->folder)
 																 ->first();
 
@@ -1125,7 +1047,9 @@ class FilesystemX {
 														$folder_model =	FolderX::create([
 																'parent' => $this->destination_folder_user,
 																'name' => $this->file['additional_file_data']->folder,
-																'user_id' => $user_id
+																'user_id' => $user_id,
+																'owner_id' => $owner_id,
+																'group_id' => $group_id
 															]);
 
 													} else {
@@ -1152,14 +1076,18 @@ class FilesystemX {
 													$file_relations = FileRelations::create([
 															'file_id' => $file_model->id,
 															'user_id' => $user_id,
-															'workitem_id' => (!empty($this->file['additional_file_data']->workitem_id)) ?: NULL,
-															'training_id' => (!empty($this->file['additional_file_data']->training_id)) ?: NULL,
+															'owner_id' => $owner_id,
+															'group_id' => $group_id,
+															'workitem_id' => (!empty($this->file['additional_file_data']->workitem_id)) ?: null,
+															'training_id' => (!empty($this->file['additional_file_data']->training_id)) ?: null,
 															'folder_id' => null
 														]);
 
 														if($file_relations || !empty($file_relations)) {
 
-															$std_file->file_id = $file_model->id;
+															$std_file->file_id = (int)$file_model->id;
+															$std_file->user_id = (int)$file_relations->user_id;
+															$std_file->group_id = (int)$file_relations->group_id;
 															$std_file->private_token = $file_model->private_token;
 															$std_file->url = $file_model->url;
 															$std_file->filename = $file_model->filename;
@@ -1175,7 +1103,7 @@ class FilesystemX {
 															$std_file->error = false;
 
 															return $std_file;
-														
+
 													} else {
 														throw new RuntimeException("Unable to insert into file ralations table.", 0.1);
 													}
@@ -1188,13 +1116,13 @@ class FilesystemX {
 										} else {
 											throw new RuntimeException("Unable to insert into file table.", 0.3);
 										}
-								
+
 								} else {
-									throw new RuntimeException("Extended maximum file upload size, only 5MB allowed.", 1);
+									throw new RuntimeException("Extended maximum file upload size, only " . $this->format_file_size($this->maximum_file_size) . " allowed.", 1);
 								}
 
 						} else {
-							throw new RuntimeException("Extended maximum file upload size, only 5MB allowed.", 1.2);
+							throw new RuntimeException("Extended maximum file upload size, only " . $this->format_file_size($this->maximum_file_size) . " allowed.", 1.2);
 						}
 
 					} else {
@@ -1213,8 +1141,182 @@ class FilesystemX {
     		return $error;
 
 		}
-		
+
 	}
+
+
+	/**
+     * Clone the same files, but might use different parametrs also.
+     * Such parameters might/can be:
+     * * user_id
+     * * item_id(workitem_id, training_id, notification_id...)
+     *
+     * @param  {[object]} file [file_id,
+     *                        private_token,
+     *                        url,
+     *                        filename,
+     *                        full_filename,
+     *                        cut_full_filenamem,
+     *                        descriptionm,
+     *                        folder_idm,
+     *                        parent_folderm,
+     *                        folder,
+     *                        download_url,
+     *                        size,
+     *                        created_at]
+     *
+     * @return {[object]}      [check the getRandomString() method in fileSystemX.php library]
+     */
+	public function clone_file($file, $owner) {
+
+		$this->files[] = $file;
+
+		foreach ($file as $file) {
+
+			if(!$this->checkCloneFilesByItemType($file)) {
+
+				//
+				// @note: We might actually not want to set the owner_id at all
+				// -> but for now it should do the job.
+				//
+				$file["owner_id"] = $owner;
+				$file["clone"] = 1;
+
+				if(isset($file["folder"]) && !empty($file["folder"])) {
+					$file["folder_id"] = $this->getFolderByName($file["folder"])->toarray()["id"];
+					unset($file["folder"]);
+				}
+
+				$files[] = FileRelations::create($file);
+
+			}
+
+		}
+
+		return $this->files;
+
+	}
+
+
+	/**
+	 * Find clone files.
+	 * Basically of the file(s) user_id != owner_id
+	 * -> they are reference files to actual(physical) files.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function findCloneFiles($owner_id) {
+		return count(DB::select("SELECT * FROM file_relations WHERE user_id <>" . $owner_id, []));
+	}
+
+
+	/**
+	 * Check if the files are clones or actual files.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function checkCloneFiles($file) {
+
+		$user_id = null;
+		$owner_id = null;
+
+		if(is_object($file)) {
+
+			$user_id = $file->user_id;
+			$owner_id = $file->owner_id;
+
+		} else if(is_array($file)) {
+
+			$user_id = $file["user_id"];
+			$owner_id = $file["owner_id"];
+
+		} else {
+			throw new Exception("Wrong file type: " . $file);
+		}
+
+		return ($user_id == $owner_id) ? true : false;
+
+	}
+
+	/**
+	 * Update Clone files
+	 * @param  [type] $type [description]
+	 * @param  [type] $file [description]
+	 * @return [type]       [description]
+	 */
+    public function checkCloneFilesByItemType($file) {
+
+    	$file_relations = null;
+
+    	if(isset($file["training_id"]) && !empty($file["training_id"])) {
+
+    		//
+    		// @note 
+    		// 	Skip training_id, for now at least since the method on @EloquentStaffTrainingController
+    		//  -> method @saveOneTraining() is actually deleting the last updated training and inserting a new one.
+    		//  This makes it unable to edit the file_relations based on the "trainig_id", since we always get a new "training_id".
+    		// 
+    		// ->where('training_id', '=', $file['training_id']) 
+    		//
+
+			$file_relations = $this->mainQuery()->where('user_id', '=', $file['user_id']);
+		}
+		
+		if(isset($file["license_id"]) && !empty($file["license_id"])) {
+			$file_relations = $this->mainQuery()->where('license_id', '=', $file['license_id'])->where('user_id', '=', $file['user_id']);
+		}
+
+		if(isset($file["workitem_id"]) && !empty($file["workitem_id"])) {
+			$file_relations = $this->mainQuery()->where('workitem_id', '=', $file['workitem_id'])->where('user_id', '=', $file['user_id']);
+		}
+
+		if(isset($file["aircraft_id"]) && !empty($file["aircraft_id"])) {
+			$file_relations = $this->mainQuery()->where('aircraft_id', '=', $file['aircraft_id'])->where('user_id', '=', $file['user_id']);
+        }
+
+        // Get the first item
+       	$file_relations = $file_relations->where('file_id', '=', $file['file_id'])->first();
+
+        if($file_relations != null) {
+
+        	// 
+        	// Basically we pass the folder name based on item category.
+        	// 
+        	// Such as:
+        	// * Training
+        	// 	* Continous training
+        	// 	* Type training
+        	// 	...
+        	// 	
+        	// 	Based on the category and sub-category of the item
+        	// 	-> we create folder and sub-folders gradually.
+        	// 	
+        	// 	In the instance of Training -> Type Training there will be a root folder of Training
+        	// 	-> and Type/continous... trainings will become it's child/sub-folders.
+        	// 
+        	if(isset($file["folder"]) && !empty($file["folder"])) {
+        		
+        		// Create folder
+        		// It won't create a folder if it already exits.
+        		$_folder = $this->createFolder($file["folder"], $type = 'training');
+
+        		// Add the key of folder_id
+        		$file["folder_id"] = $_folder["id"];
+
+        		// Unset the folder key since there's no coulmn on the database named after it.
+        		unset($file["folder"]);
+
+        	}
+
+	        $file_relations->fill($file);
+	        $file_relations->save();
+        	return true;
+
+        } else {
+        	return false;
+        }
+
+    }
 
 
 	/**
@@ -1235,8 +1337,8 @@ class FilesystemX {
 
 			$file_user_id = $file_relations["user_id"];
 
-			$file_access = DB::select('SELECT count(*) as belongs_to_company 
-									 FROM users WHERE id = ? AND company_id = ?', 
+			$file_access = DB::select('SELECT count(*) as belongs_to_company
+									 FROM users WHERE id = ? AND company_id = ?',
 									 [$file_user_id, $user_company])[0];
 
 			if($file_access !== null) {
@@ -1246,11 +1348,11 @@ class FilesystemX {
 			}
 
 		}
-		
+
 		try {
 
 			if($file_by_token !== null) {
-				
+
 				$file_relations = $this->getByFileRelation(["file_id" => $file_by_token->id])->first()["attributes"];
 
 				if($user_id == $file_relations["user_id"] || $file_access > 0) {
@@ -1291,7 +1393,7 @@ class FilesystemX {
     		$error->error = true;
 
     		return $error;
-			
+
 		}
 
 	}
@@ -1311,7 +1413,7 @@ class FilesystemX {
 
 			$file_relations = $this->getByID($file["id"])->first();
 
-			if($file_relations !== null) {
+			if($file_relations != null) {
 
 				$std_file->id = $file_relations["attributes"]["id"];
 
@@ -1340,14 +1442,14 @@ class FilesystemX {
 					if(isset($file["aircraft_id"]) || !empty($file["aircraft_id"])) {
 						$file_relations->fill(["aircraft_id" => $file["aircraft_id"]]);
 						$file_relations->save();
-						
+
 						$std_file->license_id = $file_relations->license_id;
 					}
 
 					if(isset($file["employment_id"]) || !empty($file["employment_id"])) {
 						$file_relations->fill(["employment_id" => $file["employment_id"]]);
 						$file_relations->save();
-						
+
 						$std_file->license_id = $file_relations->license_id;
 					}
 
@@ -1367,7 +1469,7 @@ class FilesystemX {
 	 * @return [type]              [description]
 	 */
 	public function createFolder($folder_name, $type) {
-		
+
 		$folder = FolderX::where("name", '=', $folder_name)->first();
 
 		if($folder === null) {
@@ -1389,24 +1491,37 @@ class FilesystemX {
 	 * @param  [type] $id [description]
 	 * @return [type]     [description]
 	 */
-	public function destroy($id, $user) {
-		
-		$eager_file = $this->getByID($id)->first();
+	public function destroy($file, $user) {
+
+		$file_param = $file;
+		$eager_file = $this->getByAttribute($file_param, "=")->first();
+
 		$file_relations = $eager_file["attributes"];
 		$file = $eager_file["relations"]["filesx"]["attributes"];
 		$folder = $eager_file["relations"]["foldersx"]["attributes"];
 
 		$user_id = $user->id;
 		$user_company = $user->company_id;
-		$permissions = $this->file_permission('company', $file_relations["user_id"], ["company_id" => $user_company]);
+		$user_group = $user->group_id;
+
+		if($user_company != null) {
+			$permissions = $this->file_permission('company', $file_relations["user_id"], ["company_id" => $user_company]);
+		}
 
 		try {
 
-			if($user_id == $file_relations["user_id"] || $permissions > 0) {
+			if($user_id == $file_relations["user_id"] || $user_id == $file_relations["owner_id"] || $permissions > 0 && $user_group != 6) {
 
 				if($file || !empty($file)) {
 
 					$this->full_filename = $this->get_full_filename($file_relations["user_id"], $file["url"]);
+
+					//
+					// If we are destroying the files that belong to
+					// -> other user than us, meast that we're destroying
+					// -> the clone files.
+					//
+					if($user_id == $file_relations["user_id"]) {
 
 						if(file_exists($this->full_filename)) {
 
@@ -1414,8 +1529,8 @@ class FilesystemX {
 
 								if($delete_file) {
 
-									$_file_delete = FileX::find($id)->delete();
-									$file_relations = FileRelations::where("file_id", '=', $id)->delete();
+									$_file_delete = FileX::find($file_param["file_id"])->delete();
+									$file_relations = FileRelations::where("file_id", '=', $file_param["file_id"])->delete();
 
 										if($_file_delete && $file_relations) {
 
@@ -1437,6 +1552,10 @@ class FilesystemX {
 						} else {
 							throw new RuntimeException("File not found.", 0.2);
 						}
+
+					} else {
+						return $this->destroyClones($file_param);
+					}
 
 				} else {
 					throw new RuntimeException("Eloquent File does not exits.", 1.2);
@@ -1489,10 +1608,21 @@ class FilesystemX {
 
 					foreach ($training_file as $t_file) {
 
-						FileX::where("id", "=", $t_file->file_id)->delete();
-							
-						$this->full_filename = $this->get_full_filename($file_relations["user_id"], $t_file->url);
-						$delete_file = $this->delete_file($this->full_filename);
+						if($this->checkCloneFiles($t_file)) {
+
+							// If there are no more clone files
+							// -> then finally delete the actual files.
+							if($this->findCloneFiles($file_relations["owner_id"]) == 0) {
+
+								FileX::where("id", "=", $t_file->file_id)->delete();
+
+								$this->full_filename = $this->get_full_filename($file_relations["user_id"], $t_file->url);
+								$delete_file = $this->delete_file($this->full_filename);
+
+							}
+
+						}
+
 
 					}
 
@@ -1513,7 +1643,7 @@ class FilesystemX {
 				break;
 
 			case 'license':
-				
+
 					$license_file = $this->getLicenseFiles($id);
 					$file_relations = FileRelations::where("license_id", '=', $id)->first();
 					$file_relations = $file_relations["attributes"];
@@ -1521,7 +1651,7 @@ class FilesystemX {
 					foreach ($license_file as $t_file) {
 
 						FileX::where("id", "=", $t_file->file_id)->delete();
-							
+
 						$this->full_filename = $this->get_full_filename($file_relations["user_id"], $t_file->url);
 						$delete_file = $this->delete_file($this->full_filename);
 
@@ -1530,7 +1660,35 @@ class FilesystemX {
 					$file_relations = FileRelations::where("training_id", '=', $id)->delete();
 
 				break;
-				
+
+		}
+
+	}
+
+	/**
+	 * Destroy clone files.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function destroyClones($file) {
+
+		//
+		// $_file_delete = FileX::find($file["file_id"])->delete();
+		//
+		// @note: that we only delete the file_relations and not the file from the
+		// -> files tables itself.
+		//
+		$file_relations = FileRelations::where("file_id", '=', $file["file_id"])->where("user_id", "=", $file["user_id"])->delete();
+
+		if($file_relations) {
+
+			$std_file = new stdClass();
+			$std_file->delete = true;
+			$std_file->message = "File deleted successfully";
+			$std_file->error = false;
+
+			return $std_file;
+
 		}
 
 	}
@@ -1539,10 +1697,10 @@ class FilesystemX {
 	// ---------------------------------------------------
 	// Files/Folder Helper functions/methods
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Files/Folders helper functions/methods
 	// -> reside here, such as:
-	// 
+	//
 	// * Validators
 	// * Server side - Folder Creation
 	// * Server side - File Creation
@@ -1552,9 +1710,9 @@ class FilesystemX {
 	// * Mime types
 	// * Server side - File size converters
 	// * Server side - File size checkers
-	// 
+	//
 	// More to be added...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
@@ -1569,7 +1727,7 @@ class FilesystemX {
 	}
 
 
-	/** 
+	/**
 	 * Simply way of checking file permissions.
 	 * @param  [type] $type         [description]
 	 * @param  [type] $file_user_id [description]
@@ -1585,24 +1743,25 @@ class FilesystemX {
 			// -> and give the permission and not only if
 			// -> it is the higher permissed user, since we didn't decide
 			// -> group/permissions system properly...
-			// 
-			// Basically check if the user belongs to that current 
+			//
+			// Basically check if the user belongs to that current
 			// -> company and allow them to share files.
-			// 
+			//
 			switch ($type) {
 				case 'company':
-					$file_access = DB::select('SELECT count(*) as belongs_to_company 
-												 FROM users WHERE id = ? 
-												 AND company_id = ?', 
+					$file_access = DB::select('SELECT count(*) as belongs_to_company
+												 FROM users WHERE id = ?
+												 AND company_id = ?
+												 AND group_id = 5',
 												 [$file_user_id, $data["company_id"]])[0];
 					break;
-				
+
 				default:
 					# code...
 					break;
 			}
 
-			
+
 
 			if($file_access !== null) {
 				$file_access = $file_access->belongs_to_company;
@@ -1617,11 +1776,11 @@ class FilesystemX {
 
 	/**
 	 * check_if_SQL_files_exits
-	 * 
+	 *
 	 * Check if the file_names that comes from the
 	 * _> SQL statement excist on the machine hard-drive or not.
 	 * If the "real files" doesn't exits, simply don't show them.
-	 * 
+	 *
 	 * @return [object] [objcet of real files]
 	 */
 	public function check_if_SQL_files_exits($sql) {
@@ -1636,13 +1795,13 @@ class FilesystemX {
 				$file->size = $this->get_real_size($file->full_file_path);
 				$file->download_url = $this->file_download_route . $file->private_token;
 				$file->file_extension = pathinfo($file->full_file_path, PATHINFO_EXTENSION);
-				
-				if($file->file_extension == "jpeg" 
+
+				if($file->file_extension == "jpeg"
 					|| $file->file_extension == "jpg"
 					|| $file->file_extension == "png"
-					|| $file->file_extension == "bmp" 
+					|| $file->file_extension == "bmp"
 					|| $file->file_extension == "gif") {
-					
+
 					// $file->file_thumbnail = $this->genImgThumbnail($file->full_file_path);
 
 				}
@@ -1652,7 +1811,7 @@ class FilesystemX {
 				// Not sure if we should splice
 				// the array if the real file does
 				// -> not exits...
-				array_splice($sql, $key, 1);
+				// array_splice($sql, $key, 1);
 
 			}
 
@@ -1670,13 +1829,13 @@ class FilesystemX {
 	 * @return [string]            [full path of the file]
 	 */
 	public function get_full_filename($user_id, $file_name) {
-		
+
 		// The user filename.
 		$this->filename = $file_name;
 
 		// Destination folder of the user
 		$this->destination_folder_user = $this->destination_folder_local . $this->destination_folder_user_prefx . $user_id;
-		
+
 		// Full path name of the file
 		$this->full_path_filename = $this->destination_folder_user . "/" . $this->filename;
 
@@ -1688,13 +1847,13 @@ class FilesystemX {
 
 	/**
 	 * Set target filename
-	 * 
+	 *
 	 * @param string $filename
 	 */
 	public function set_filename($filename) {
-		
+
 		$this->filename = $filename;
-		
+
 	}
 
 
@@ -1709,7 +1868,7 @@ class FilesystemX {
 		}
 
 	}
-	
+
 	/**
 	 * Check if the thumbnails folder exits.
 	 * @param  [type] $destination [description]
@@ -1741,20 +1900,20 @@ class FilesystemX {
 
 	/**
 	 * Create path to destination
-	 * 
+	 *
 	 * @param string $dir
 	 * @return bool
 	 */
 	protected function create_destination() {
-		
+
 		return mkdir($this->destination_folder_local, $this->default_permissions, true);
-		
+
 	}
 
 
 	/**
 	 * Create path based on destination
-	 * 
+	 *
 	 * @return [string] Path name.
 	 */
 	public function create_thumbnails_destination($destination) {
@@ -1765,29 +1924,29 @@ class FilesystemX {
 
 	/**
 	 * Create path to destination
-	 * 
+	 *
 	 * @param string $dir
 	 * @return bool
 	 */
 	protected function create_user_destination($destination) {
-		
+
 		return mkdir($destination, $this->default_permissions, true);
-		
+
 	}
-	
-	
+
+
 	/**
 	 * Set unique filename
-	 * 
+	 *
 	 * @return string
 	 */
 	protected function create_new_filename($destination, $user_id) {
-		
+
 		$filename = "user_" . $user_id . "_" . sha1(mt_rand(1, 9999) . $destination . uniqid()) . time();
 		$this->set_filename($filename);
-		
+
 	}
-	
+
 
 	/**
 	 * Generate a random string.
@@ -1798,7 +1957,7 @@ class FilesystemX {
 	{
 
 		// Set a default length
-		if(empty($length) || $length == null) 
+		if(empty($length) || $length == null)
 		{
 			$length = 42;
 		}
@@ -1828,17 +1987,17 @@ class FilesystemX {
 
 	}
 
-	
+
 	/**
 	 * Convert bytes to mb.
-	 *  
+	 *
 	 * @param int $bytes
 	 * @return int
 	 */
 	protected function bytes_to_mb($bytes) {
-		
+
 		return round(($bytes / 1048576), 2);
-		
+
 	}
 
 
@@ -1849,7 +2008,7 @@ class FilesystemX {
 	public function allowed_mimes() {
 
 		$this->set_mimes();
-		
+
 		$this->allowed_mimes = [
 
 			'pdf' => $this->mimes['.pdf'],
@@ -1944,7 +2103,7 @@ class FilesystemX {
      * @param [string] $source [soruce of the file]
      * @return resized and cached image.
      */
-    public function genImgThumbnail($source, $target) 
+    public function genImgThumbnail($source, $target)
     {
     	$this->check_thumbnails_destination($this->destination_folder_fileThumb);
     	$copy = copy($source, $this->destination_folder_fileThumb . DIRECTORY_SEPARATOR . $target);
@@ -1958,13 +2117,13 @@ class FilesystemX {
      * @return [type]    [description]
      */
    	public function getResizedImg($x, $y, $source) {
-		$_x = $x; 
+		$_x = $x;
 		$_y = $y;
 		$img_link = \ImgProxy::link($source, $x, $y);
 		return $img_link;
    	}
 
-	
+
 	/**
 	 * Receives the size of a file in bytes, and formats it for readability.
 	 * Used on files listings (templates and the files manager).
