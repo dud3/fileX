@@ -9,7 +9,6 @@ use Redirect;
 
 use FileRepositoryInterface;
 
-/*
 use _notificationInterface;
 use UserRepositoryInterface;
 use CompanyRepositoryInterface;
@@ -18,13 +17,11 @@ use WorkitemRepositoryInterface;
 use TrainingRepositoryInterface;
 
 use ProfileRepositoryInterface;
-*/
 
 class fileSystemController extends BaseController {
 
 	protected $file;
 
-	/*
 	protected $notifications;
 	protected $user;
 	protected $company;
@@ -33,35 +30,32 @@ class fileSystemController extends BaseController {
 	protected $training;
 
 	protected $profile;
-	*/
-	
+
 	public function __construct(FileRepositoryInterface $file,
-								_notificationInterface $notifications,  
+								_notificationInterface $notifications,
 								TrainingRepositoryInterface $training, UserRepositoryInterface $user)
 	{
 		header('Content-Type: text/plain; charset=utf-8');
 		$this->file = $file;
-		/*
 		$this->training = $training;
 		$this->user = $user;
-		*/
 	}
 
 
 	// ---------------------------------------------------
 	// Folders Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the folder nesscecary
 	// -> manipulations goes here...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
 	 * Get the full tree of folders.
 	 * @return [type] [description]
 	 */
-	public function getFullTree() 
+	public function getFullTree()
 	{
 
 		$folders = $this->file->getFullTree();
@@ -81,7 +75,7 @@ class fileSystemController extends BaseController {
 	 * Get the full tree of folders.
 	 * @return [type] [description]
 	 */
-	public function getFullTreePerUser() 
+	public function getFullTreePerUser()
 	{
 
 		$folders = $this->file->getFullTreePerUser();
@@ -103,7 +97,7 @@ class fileSystemController extends BaseController {
 	 * -> sub-folders.
 	 * @return [type] [description]
 	 */
-	public function getLeafNodes() 
+	public function getLeafNodes()
 	{
 
 		$folders = $this->file->getLeafNodes();
@@ -124,7 +118,7 @@ class fileSystemController extends BaseController {
 	 * -> sub-folders.
 	 * @return [type] [description]
 	 */
-	public function getSinglePath() 
+	public function getSinglePath()
 	{
 
 		$folders = $this->file->getSinglePath($path_name);
@@ -146,7 +140,22 @@ class fileSystemController extends BaseController {
 	 */
 	public function getFolders() {
 
-		$folders = $this->file->user_folders();
+		$input = Input::get('user_id');
+
+		// Set the flag if we want to get the files
+		// while getting the folders.
+		$get_files = Input::get('get_files');
+		if(!isset($get_files)) {
+			$get_files = false;
+		}
+
+		if(!empty($input)) {
+			$user_id = $input;
+		} else {
+			$user_id = null;
+		}
+
+		$folders = $this->file->user_folders($user_id, $get_files);
 
 		if($folders) {
 			$respose = Response::json(["folders" => $folders, "msg" => "Get folders success", "code" => 200, "error" => false], 200);
@@ -162,11 +171,11 @@ class fileSystemController extends BaseController {
 	// ---------------------------------------------------
 	// Files Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Files nesscecary
 	// -> manipulations goes here...
-	// 
-	// --------------------------------------------------- 
+	//
+	// ---------------------------------------------------
 
 	/**
 	 * Get all the files
@@ -203,7 +212,7 @@ class fileSystemController extends BaseController {
 		} else {
 			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 400, "error" => true], 400);
 		}
-		
+
 		return $respose;
 	}
 
@@ -211,7 +220,7 @@ class fileSystemController extends BaseController {
 	 * Get files by user.
 	 * @return [type] [description]
 	 */
-	public function getByUser() 
+	public function getByUser()
 	{
 
 		$input = Input::get('user_id');
@@ -227,9 +236,36 @@ class fileSystemController extends BaseController {
 		if($file) {
 			$respose = Response::json(["files" => $file, "msg" => "Get File, success", "code" => 200, "error" => false], 200);
 		} else {
-			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 200, "error" => false], 200);
+			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 401, "error" => false], 401);
 		}
-		
+
+		return $respose;
+
+	}
+
+	/**
+	 * Get users with files, used by companies.
+	 * @return [type] [description]
+	 */
+	public function getUsersWithFile()
+	{
+
+		$input = Input::get('company_id');
+
+		if($input) {
+			$company_id = $input;
+		} else {
+			$company_id = null;
+		}
+
+		$file = $this->file->getUsersWithFile($company_id);
+
+		if($file) {
+			$respose = Response::json(["users" => $file, "msg" => "Get User(s), success", "code" => 200, "error" => false], 200);
+		} else {
+			$respose = Response::json(["users" => $file, "msg" => "Get User(s), failed", "code" => 401, "error" => true], 401);
+		}
+
 		return $respose;
 
 	}
@@ -238,7 +274,7 @@ class fileSystemController extends BaseController {
 	 * Get Recent files per user.
 	 * @return [type] [description]
 	 */
-	public function getRecentFiles() 
+	public function getRecentFiles()
 	{
 
 		$input = Input::get('user_id');
@@ -256,7 +292,7 @@ class fileSystemController extends BaseController {
 		} else {
 			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 400, "error" => true], 400);
 		}
-		
+
 		return $respose;
 
 	}
@@ -282,7 +318,7 @@ class fileSystemController extends BaseController {
 		} else {
 			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 400, "error" => true], 400);
 		}
-		
+
 		return $respose;
 
 
@@ -292,21 +328,26 @@ class fileSystemController extends BaseController {
 	 * List files based on file folder.
 	 * @return [type] [description]
 	 */
-	public function getByFolder($folder_id) 
+	public function getByFolder($folder_id, $user_id)
 	{
+		$user_id = null;
 
 		if($folder_id === null) {
 			$folder_id = Input::get('folder_id');
 		}
 
-		$file = $this->file->getByFolder($folder_id, $user_id = null);
+		if($user_id === null) {
+			$user_id = Input::get('user_id');
+		}
+
+		$file = $this->file->getByFolder($folder_id, $user_id);
 
 		if($file || empty($file)) {
-			$respose = Response::json(["files" => $file, "msg" => "Get File, success", "code" => 200, "error" => false], 200);			
+			$respose = Response::json(["files" => $file, "msg" => "Get File, success", "code" => 200, "error" => false], 200);
 		} else {
 			$respose = Response::json(["files" => $file, "msg" => "Get File, failed", "code" => 400, "error" => true], 400);
 		}
-		
+
 		return $respose;
 	}
 
@@ -323,7 +364,7 @@ class fileSystemController extends BaseController {
 
 		$input = Input::file('file');
 		$refered_user_id = Input::get('user_id');
-		
+
 		$user = $refered_user_id;
 
 		$files = $this->file->upload($input, $user, $addit_data = null);
@@ -337,11 +378,48 @@ class fileSystemController extends BaseController {
 			}
 
 		} else {
-		
+
 			if($files) {
 				$respose = Response::json(["files" => $files, "msg" => "Upload file(s) success", "code" => 200, "error" => false], 200);
-			} 
+			}
 
+		}
+
+		return $respose;
+
+	}
+
+   /**
+     * Clone the same files, but might use different parametrs also.
+     * Such parameters might/can be:
+     * * user_id
+     * * item_id(workitem_id, training_id, notification_id...)
+     *
+     * @param  {[type]} file [file_id,
+     *                        private_token,
+     *                        url,
+     *                        filename,
+     *                        full_filename,
+     *                        cut_full_filenamem,
+     *                        descriptionm,
+     *                        folder_idm,
+     *                        parent_folderm,
+     *                        folder,
+     *                        download_url,
+     *                        size,
+     *                        created_at]
+     *
+     * @return {[object]}      [check the getRandomString() method in fileSystemX.php library]
+     */
+	public function clone_file($file = null, $owner = null)
+	{
+
+		$input = Input::all();
+
+		$files = $this->file->clone_file($input, $owner);
+
+		if($files) {
+			$respose = Response::json(["files" => $files, "msg" => "Clone file(s) success", "code" => 200, "error" => false], 200);
 		}
 
 		return $respose;
@@ -350,7 +428,7 @@ class fileSystemController extends BaseController {
 
 	/**
 	 * Downlod file by it's token.
-	 * @return [type] [description]
+	 * @return [string] [ran]
 	 */
 	public function download($token)
 	{
@@ -359,7 +437,7 @@ class fileSystemController extends BaseController {
 
 		if($input === null || empty($input)) {
 			$input = $token;
-		} 
+		}
 
 		$files = $this->file->download($input);
 
@@ -379,16 +457,34 @@ class fileSystemController extends BaseController {
 	 * @param  int  $id
 	 * @return Response
 	 */
-	public function update()
+	public function update($input = null)
 	{
 
-		$input = Input::all();
+		if($input == null) {
+			$input = Input::all();
+		}
 
 		$files = $this->file->update($input, $user = null);
 
 		if($files) {
 			$respose = Response::json(["files" => $files, "msg" => "Update file(s) success", "code" => 200, "error" => false], 200);
-		} 
+		}
+
+		return $respose;
+
+	}
+
+	public function change_file_name($file = null) {
+
+		if($file == null) {
+			$file = Input::all();
+		}
+
+		$file = $this->file->change_file_name($file);
+
+		if($file) {
+			$respose = Response::json(["files" => $file, "msg" => "File name change, success", "code" => 200, "error" => false], 200);
+		}
 
 		return $respose;
 
@@ -440,7 +536,7 @@ class fileSystemController extends BaseController {
 	 * @return [type] [description]
 	 */
 	public function filterFiles() {
-		
+
 		$q = Input::all();
 
 		$files = $this->file->filterFiles($q);
@@ -462,10 +558,14 @@ class fileSystemController extends BaseController {
 	 * @param  int  $id
 	 * @return Response
 	 */
-	public function destroy($id)
+	public function destroy($file = null)
 	{
 
-		$files = $this->file->destroy($id);
+		if($file == null) {
+			$file = Input::all();
+		}
+
+		$files = $this->file->destroy($file);
 
 		if($files->error) {
 
@@ -485,6 +585,34 @@ class fileSystemController extends BaseController {
 
 		return $respose;
 
+	}
+
+	/**
+	 * Compress files.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function compress($files = null) {
+
+		if($files == null) {
+			$files = Input::all();
+		}
+
+		$file_sys = $this->file->compress($files);
+
+		if($file_sys->error) {
+
+			$respose = Response::json(["errorType" => "File", "msg" => $file_sys->message, "code" => 406, "error" => true], 406);	
+
+		} else {
+
+			if($file_sys) {
+				$respose = Response::json(["files" => $file_sys, "msg" => "Ziped file(s) success", "code" => 200, "error" => false], 200);
+			}
+
+		}
+
+		return $respose;
 	}
 
 }

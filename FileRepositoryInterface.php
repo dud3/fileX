@@ -1,15 +1,15 @@
 <?php
 
 interface FileRepositoryInterface {
-	
+
 	// ---------------------------------------------------
 	// Folders Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the folder nesscecary
 	// -> manipulations goes here...
-	// 
-	// --------------------------------------------------- 
+	//
+	// ---------------------------------------------------
 
 	/**
 	 * Get the full tree of folders.
@@ -50,10 +50,10 @@ interface FileRepositoryInterface {
 	// ---------------------------------------------------
 	// Files Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Files nesscecary
 	// -> manipulations goes here...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
@@ -108,21 +108,21 @@ interface FileRepositoryInterface {
      * Such parameters might/can be:
      * * user_id
      * * item_id(workitem_id, training_id, notification_id...)
-     * 
+     *
      * @param  {[type]} file [file_id,
-     *                        private_token, 
+     *                        private_token,
      *                        url,
-     *                        filename, 
-     *                        full_filename, 
-     *                        cut_full_filenamem, 
-     *                        descriptionm, 
-     *                        folder_idm, 
-     *                        parent_folderm, 
-     *                        folder, 
+     *                        filename,
+     *                        full_filename,
+     *                        cut_full_filenamem,
+     *                        descriptionm,
+     *                        folder_idm,
+     *                        parent_folderm,
+     *                        folder,
      *                        download_url,
-     *                        size, 
+     *                        size,
      *                        created_at]
-     *                        
+     *
      * @return {[object]}      [check the getRandomString() method in fileSystemX.php library]
      */
 	public function clone_file($file, $owner = null);

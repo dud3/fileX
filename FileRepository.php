@@ -11,9 +11,9 @@ class FileRepository implements FileRepositoryInterface {
 
 	public function __construct(
 				_notificationInterface $notifications,
-				UserRepositoryInterface $user, 
+				UserRepositoryInterface $user,
 				CompanyRepositoryInterface $company,
-				WorkitemRepositoryInterface $workitem, 
+				WorkitemRepositoryInterface $workitem,
 				TrainingRepositoryInterface $training,
 				ProfileRepositoryInterface $profile
 		) {
@@ -30,11 +30,11 @@ class FileRepository implements FileRepositoryInterface {
 	// ---------------------------------------------------
 	// Folders Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the folder nesscecary
 	// -> manipulations goes here...
-	// 
-	// --------------------------------------------------- 
+	//
+	// ---------------------------------------------------
 
 	/**
 	 * Get the full tree of folders.
@@ -79,13 +79,13 @@ class FileRepository implements FileRepositoryInterface {
 	 * Get user folders.
 	 * @return [type] [description]
 	 */
-	public function user_folders($user_id = null) {
+	public function user_folders($user_id = null, $get_files = false) {
 
 		if($user_id == null || empty($user_id)) {
 			$user_id = $this->user->getCurrentUser()->id;
 		}
 
-		return FSX::user_folders($user_id);
+		return FSX::user_folders($user_id, $get_files);
 	}
 
 
@@ -93,10 +93,10 @@ class FileRepository implements FileRepositoryInterface {
 	// ---------------------------------------------------
 	// Files Section
 	// ---------------------------------------------------
-	// 
+	//
 	// All the Files nesscecary
 	// -> manipulations goes here...
-	// 
+	//
 	// ---------------------------------------------------
 
 	/**
@@ -128,6 +128,22 @@ class FileRepository implements FileRepositoryInterface {
 		}
 
 		return FSX::getByUser($user_id);
+	}
+
+
+	/**
+	 * Get users with files only.
+	 * @param  [type] $company_id [description]
+	 * @return [type]             [description]
+	 */
+	public function getUsersWithFile($company_id = null) {
+
+		if($company_id == null || empty($company_id)) {
+			$company_id = $this->user->getCurrentUser()->company_id;
+		}
+
+		return FSX::getUsersWithFile(["company_id" => $company_id]);
+
 	}
 
 
@@ -182,7 +198,7 @@ class FileRepository implements FileRepositoryInterface {
  	 * @return [type]       [description]
  	 */
 	public function upload($data, $user, $addit_data = null) {
-		
+
 		if($user == null) {
 			$user = $this->user->getCurrentUser();
 		} else {
@@ -197,32 +213,34 @@ class FileRepository implements FileRepositoryInterface {
 
 	}
 
+
 	 /**
      * Clone the same files, but might use different parametrs also.
      * Such parameters might/can be:
      * * user_id
      * * item_id(workitem_id, training_id, notification_id...)
-     * 
+     *
      * @param  {[type]} file [file_id,
-     *                        private_token, 
-     *                        url, 
-     *                        filename, 
-     *                        full_filename, 
-     *                        cut_full_filenamem, 
-     *                        descriptionm, 
-     *                        folder_idm, 
-     *                        parent_folderm, 
-     *                        folder, 
+     *                        private_token,
+     *                        url,
+     *                        filename,
+     *                        full_filename,
+     *                        cut_full_filenamem,
+     *                        descriptionm,
+     *                        folder_idm,
+     *                        parent_folderm,
+     *                        folder,
      *                        download_url,
-     *                        size, 
+     *                        size,
      *                        created_at]
-     *                        
+     *
      * @return {[object]}      [check the getRandomString() method in fileSystemX.php library]
      */
 	public function clone_file($file, $owner = null) {
 		$owner = $this->user->getCurrentUser()->id;
 		return FSX::clone_file($file, $owner);
 	}
+
 
 	/**
 	 * Download file based on token or ID.
@@ -247,6 +265,16 @@ class FileRepository implements FileRepositoryInterface {
 
 
 	/**
+	 * Change file name
+	 * @param  [type] $file [description]
+	 * @return [type]       [description]
+	 */
+	public function change_file_name($file) {
+		return FSX::change_file_name($file);
+	}
+
+
+	/**
 	 * Get training files.
 	 * @param  [type] $id [description]
 	 * @return [type]     [description]
@@ -264,7 +292,6 @@ class FileRepository implements FileRepositoryInterface {
 	public function getLicenseFiles($id) {
 		return FSX::getLicenseFiles($id);
 	}
-
 
 
 	/**
@@ -291,8 +318,18 @@ class FileRepository implements FileRepositoryInterface {
 	 * @return [type]     [description]
 	 */
 	public function destroy($file, $user = null) {
-		$user =$this->user->getCurrentUser();
+		$user = $this->user->getCurrentUser();
 		return FSX::destroy($file, $user);
+	}
+
+
+	/**
+	 * Compress.
+	 * @param  [type] $files [description]
+	 * @return [type]        [description]
+	 */
+	public function compress($files) {
+		return FSX::compress($files);
 	}
 
 }

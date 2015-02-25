@@ -87,6 +87,20 @@ class FilesystemX {
 
 
 	/**
+	 * Ziped files folder.
+	 * @var [type]
+	 */
+	private $destination_folder_ziped;
+
+
+	/**
+	 * Public, after ziped.
+	 * @var [type]
+	 */
+	private $destination_folder_public_ziped;
+
+
+	/**
 	 * List of default folders and their child.
 	 * @var [type]
 	*/
@@ -102,6 +116,7 @@ class FilesystemX {
 						"Type Training",
 						"Basic Training",
 						"Company Training",
+						"Operators Procedures",
 						"Other Training"
 
 					],
@@ -240,9 +255,13 @@ class FilesystemX {
 		$this->destination_folder_local = Config::get("constants.g_local_file_uploads");
 		$this->destination_folder_remote = Config::get("constants.g_remote_file_uploads");
 		$this->destination_folder_fileThumb = Config::get("constants.g_fileThumb_Uploads");
+		$this->destination_folder_ziped = Config::get("constants.g_ZIP_Uploads");
 
 		$this->POST_MAX_SIZE = Config::get("constants.POST_MAX_SIZE");
 		$this->UPLOAD_MAX_SIZE = Config::get("constants.UPLOAD_MAX_SIZE");
+
+		ini_set('post_max_size', '64M');
+		ini_set('upload_max_filesize', '64M');
 
 		$this->allowed_mimes();
 		$this->createDefaultFolders();
@@ -271,8 +290,7 @@ class FilesystemX {
 			"SELECT f.id AS file_id, f.private_token, f.url, f.filename, f.full_filename, f.description, f.uploader,
 					f_r.user_id, f_r.owner_id, f_r.training_id, f_r.license_id, f_r.workitem_id, f_r.aircraft_id,
 					f.expires, f.public_allow, f.created_at, f.updated_at,
-					fo.id AS folder_id, fo.name AS folder_name, fo.parent AS folder_parent,
-					DATE_FORMAT(f_r.created_at, '%d/%m/%Y') AS created_at
+					fo.id AS folder_id, fo.name AS folder_name, fo.parent AS folder_parent
 
 			FROM file_relations f_r
 
@@ -475,7 +493,7 @@ class FilesystemX {
 	 * @param  [type] $user_id [description]
 	 * @return [type]          [description]
 	 */
-	public function user_folders($user_id) {
+	public function user_folders($user_id, $get_files = false) {
 
 		$_folder_parent;
 		$_child_folders;
@@ -515,7 +533,9 @@ class FilesystemX {
 			// Get the child folder
 			$_folder_child = DB::select(
 
-				"SELECT *
+				"SELECT fo.id, fo.parent, fo.name,
+						fo.timestamp, fo.user_id, fo.group_id,
+						fo.created_at, fo.updated_at
 
 					FROM folders fo
 
@@ -527,7 +547,7 @@ class FilesystemX {
 
 		}
 
-
+		// Count files per each folder
 		foreach ($_folder_parent as $parent) {
 
 			if(!empty($parent->child) || count($parent->child) > 0) {
@@ -536,7 +556,6 @@ class FilesystemX {
 				$sql_count = " WHERE fo.id = ? ";
 			}
 
-			// Count files per each folder
 			$_folder_files_count = DB::select(
 
 				"SELECT count(f_r.id) as count_obj
@@ -552,6 +571,35 @@ class FilesystemX {
 			,[$parent->id, $user_id])[0]->count_obj;
 
 			$parent->count_files = $_folder_files_count;
+
+			// If the flag is set, get the parent files as well.
+			if($get_files || $get_files == "true") {
+				$parent->files = $this->getByFolder($parent->id, $user_id);
+			}
+
+			// Count child folders
+			foreach ($parent->child as $child) {
+
+				$child->count_files =  DB::select(
+
+				"SELECT count(f_r.id) as count_obj
+
+				FROM folders fo
+
+				LEFT JOIN file_relations f_r
+					ON fo.id = f_r.folder_id
+
+				WHERE fo.id = ?
+				AND f_r.user_id = ?"
+
+				,[$child->id, $user_id])[0]->count_obj;
+
+				// If the flag is set, get the child files as well.
+				if($get_files || $get_files == "true") {
+				  $child->files = $this->getByFolder($child->id, $user_id);
+				}
+
+			}
 
 		}
 
@@ -626,14 +674,76 @@ class FilesystemX {
 		$sql = DB::select(
 
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
-										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
-
-
+										  AND (f_r.training_id IS NOT NULL
+										  	OR f_r.license_id IS NOT NULL
+										  	OR f_r.workitem_id IS NOT NULL
+										  	OR f_r.aircraft_id IS NOT NULL)
 			ORDER BY file_id DESC",
 
 		[$user_id]);
 
 		return $this->retrieveFiles($sql);
+
+	}
+
+	/**
+	 * Get users with files.
+	 * @return [type] [description]
+	 */
+	public function getUsersWithFile($data) {
+
+		$condition = " WHERE u.id <> 0 AND p.archived = 0 ";
+		$input = [];
+
+		if(is_array($data)) {
+			if(isset($data["company_id"]) && !empty($data["company_id"])) {
+				$condition .= " AND u.company_id = ? ";
+				$input[] = $data["company_id"];
+			}
+
+			if(isset($data["group_id"]) && !empty($data["group_id"])) {
+				$condition = " AND u.group_id = ? ";
+				$input = $data["group_id"];
+			}
+		} else {
+			die("Parameters should be passed as an array.");
+		}
+
+		$query = "SELECT DISTINCT IFNULL(p.name, CONCAT(CONCAT(u.first_name, ' '), u.last_name)) as name, u.id as user_id,
+					u_av.filename as avatar_exists, u_av.extension, u_av.folder, u_av.active as is_file_active,
+					CONCAT(u_av.folder, '/', u_av.filename, '_thumb.png') as full_user_avatar
+
+			FROM users u
+
+				LEFT JOIN profiles p
+					ON p.user_id = u.id
+
+				LEFT JOIN usr_avatar u_av
+					 ON u.id = u_av.user_id
+
+				JOIN file_relations f_r
+					ON f_r.user_id = u.id
+
+				JOIN files f
+					ON f_r.file_id = f.id
+
+				LEFT JOIN folders fo
+					ON f_r.folder_id = fo.id ";
+
+		$user = DB::select(
+			$query . $condition,
+		$input);
+
+		foreach ($user as $u) {
+			// Basically get the public folder out of root folder
+			if($u->avatar_exists === null) {
+				$u->full_user_avatar = "/images/defaultAvatar_36x36.png";
+			} else {
+				$u->full_user_avatar = strstr($u->full_user_avatar, "/avatars/");
+			}
+		}
+
+		return $user;
 
 	}
 
@@ -646,7 +756,10 @@ class FilesystemX {
 		$sql = DB::select(
 
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
-										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
+										  AND (f_r.training_id IS NOT NULL
+										  	   OR f_r.license_id IS NOT NULL
+										  	   OR f_r.workitem_id IS NOT NULL
+										  	   OR f_r.aircraft_id IS NOT NULL)
 
 			AND f_r.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 
@@ -668,7 +781,10 @@ class FilesystemX {
 		$sql = DB::select(
 
 			$this->classicMainQuery() .	" WHERE f_r.user_id = ?
-										  AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)
+										  AND (f_r.training_id IS NOT NULL
+										  	   OR f_r.license_id IS NOT NULL
+										  	   OR f_r.workitem_id IS NOT NULL
+										  	   OR f_r.aircraft_id IS NOT NULL)
 
 			AND f_r.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 
@@ -839,7 +955,10 @@ class FilesystemX {
 
 				$this->classicMainQuery()
 
-				. " WHERE f_r.user_id = ? AND (f_r.training_id IS NOT NULL OR f_r.license_id IS NOT NULL OR f_r.workitem_id IS NOT NULL OR f_r.aircraft_id IS NOT NULL)"
+				. " WHERE f_r.user_id = ? AND (f_r.training_id IS NOT NULL
+												OR f_r.license_id IS NOT NULL
+												OR f_r.workitem_id IS NOT NULL
+												OR f_r.aircraft_id IS NOT NULL)"
 
 				. $sql_folders .
 
@@ -849,7 +968,14 @@ class FilesystemX {
 
 			foreach ($sql as $key => $file) {
 
-				$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
+				// If the user itself uploaded the files.
+				if($file->user_id == $file->owner_id) {
+					$file->full_file_path = $this->get_full_filename($file->user_id, $file->url);
+				} else {
+					// Check if someone else uploaded for the user.
+					$file->full_file_path = $this->get_full_filename($file->owner_id, $file->url);
+				}
+
 				$file->file_exits = file_exists($file->full_file_path);
 
 				if(file_exists($file->full_file_path)) {
@@ -946,12 +1072,12 @@ class FilesystemX {
 
 		$this->fileObj = $data;
 
-		$this->file['path'] = $this->fileObj->getRealPath();
 		$this->file['name'] = $this->fileObj->getClientOriginalName();
+		$this->file['mimetype'] = strtolower($this->fileObj->getMimeType());
+		$this->file['size'] = $this->fileObj->getSize();
+		$this->file['path'] = $this->fileObj->getRealPath();
 		$this->file['extension'] = $this->fileObj->getClientOriginalExtension();
 		$this->file['basename'] = basename($this->file['name'], "." . $this->file['extension']);
-		$this->file['size'] = $this->fileObj->getSize();
-		$this->file['mimetype'] = strtolower($this->fileObj->getMimeType());
 
 		// Additional filde data
 		// -> such as file description
@@ -1013,7 +1139,7 @@ class FilesystemX {
 									//
 									if($this->file["mimetype"] == "application/pdf") {
 
-										$this->genPdfThumbnail($this->full_path_filename, $this->filename);
+										// $this->genPdfThumbnail($this->full_path_filename, $this->filename);
 
 									} elseif($this->file["mimetype"] == "image/jpeg" || $this->file["mimetype"] == "image/png"
 											 || $this->file["mimetype"] == "image/bmp" || $this->file["mimetype"] == "image/gif") {
@@ -1027,7 +1153,8 @@ class FilesystemX {
 											'url' => $this->filename,
 											'filename' => $this->file['basename'],
 											'full_filename' => $this->file['name'],
-											'uploader' => $user_name
+											'uploader' => $user_name,
+											'size' => $this->file['size']
 											// 'description' => $this->file['additional_file_data']->description
 										]);
 
@@ -1251,17 +1378,17 @@ class FilesystemX {
     	if(isset($file["training_id"]) && !empty($file["training_id"])) {
 
     		//
-    		// @note 
+    		// @note
     		// 	Skip training_id, for now at least since the method on @EloquentStaffTrainingController
     		//  -> method @saveOneTraining() is actually deleting the last updated training and inserting a new one.
     		//  This makes it unable to edit the file_relations based on the "trainig_id", since we always get a new "training_id".
-    		// 
-    		// ->where('training_id', '=', $file['training_id']) 
+    		//
+    		// ->where('training_id', '=', $file['training_id'])
     		//
 
 			$file_relations = $this->mainQuery()->where('user_id', '=', $file['user_id']);
 		}
-		
+
 		if(isset($file["license_id"]) && !empty($file["license_id"])) {
 			$file_relations = $this->mainQuery()->where('license_id', '=', $file['license_id'])->where('user_id', '=', $file['user_id']);
 		}
@@ -1279,23 +1406,23 @@ class FilesystemX {
 
         if($file_relations != null) {
 
-        	// 
+        	//
         	// Basically we pass the folder name based on item category.
-        	// 
+        	//
         	// Such as:
         	// * Training
         	// 	* Continous training
         	// 	* Type training
         	// 	...
-        	// 	
+        	//
         	// 	Based on the category and sub-category of the item
         	// 	-> we create folder and sub-folders gradually.
-        	// 	
+        	//
         	// 	In the instance of Training -> Type Training there will be a root folder of Training
         	// 	-> and Type/continous... trainings will become it's child/sub-folders.
-        	// 
+        	//
         	if(isset($file["folder"]) && !empty($file["folder"])) {
-        		
+
         		// Create folder
         		// It won't create a folder if it already exits.
         		$_folder = $this->createFolder($file["folder"], $type = 'training');
@@ -1464,6 +1591,18 @@ class FilesystemX {
 
 
 	/**
+	 * Change file name.
+	 * @param  [type] $file [description]
+	 * @return [type]       [description]
+	 */
+	public function change_file_name($file) {
+		$change_file_name = $file["full_filename"];
+		$file = FileX::find($file["id"]);
+		$file->full_filename = $change_file_name;
+		return $file->save();
+	}
+
+	/**
 	 * Create folder.
 	 * @param  [type] $folder_name [description]
 	 * @return [type]              [description]
@@ -1475,7 +1614,7 @@ class FilesystemX {
 		if($folder === null) {
 			if($type == 'training') {
 				$folder = FolderX::create(["name" => $folder_name,
-											"parent" => 3]);
+											"parent" => 4]);
 			} else {
 				$folder = FolderX::create(["name" => $folder_name]);
 			}
@@ -1726,6 +1865,90 @@ class FilesystemX {
 			return true;
 	}
 
+	/**
+	 * Compress folders.
+	 * @return [type] [description]
+	 */
+	public function compress($files) {
+
+		// Save later on for logs...
+		if(\Sentry::getUser() != null && !empty(\Sentry::getUser())) {
+			$_this_company = \Sentry::getUser()->company_id;
+		}
+
+		if(!file_exists($this->destination_folder_ziped)) {
+			$this->create_user_destination($this->destination_folder_ziped);
+		}
+
+		$actual_files = [];
+
+		foreach ($files as $file) {
+			$find_file = FileX::find($file);
+			$file_relations = FileRelations::where('file_id', '=', $find_file->toArray()["id"])->first()->toArray();
+			$this_std_file = new stdClass;
+			$this_std_file->abs_path = $this->get_full_filename($file_relations["user_id"], $find_file["url"]);
+			$this_std_file->url = $find_file["url"];
+			$actual_files[] = $this_std_file;
+		}
+
+		$valid_files = array();
+
+		// Check if actual files exists
+		if(is_array($actual_files)) {
+
+			foreach($actual_files as $a_files) {
+				if(file_exists($a_files->abs_path)) {
+					$this_std_file = new stdClass;
+					$this_std_file->abs_path = $a_files->abs_path;
+					$this_std_file->url = $a_files->url;
+					$valid_files[] = $this_std_file;
+				}
+			}
+
+		}
+
+		if(count($valid_files)) {
+
+			// Load the native zip lib.
+			$zip = new \ZipArchive();
+
+			$gen_str_zip = $this->getRandomString(10) . ".zip";
+
+			$this->destination_folder_ziped .= '/' . $gen_str_zip;
+			$this->destination_folder_public_ziped = "/tmpZIP" . "/" . $gen_str_zip;
+
+			// Create the destination zip file.
+			if($zip->open($this->destination_folder_ziped, \ZIPARCHIVE::CREATE) !== true) {
+				return false;
+			}
+
+			// Add only valid files.
+			foreach($valid_files as $file) {
+				$zip->addFromString($file->url, file_get_contents($file->abs_path));
+			}
+			
+			// close the zip -- done!
+			$zip->close();
+			
+			$std_file = new stdClass();
+			$std_file->ziped = true;
+			$std_file->message = "File(s) zipped successfully";
+			$std_file->error = false;
+			$std_file->desination = $this->destination_folder_public_ziped;
+
+		} else {
+
+			$std_file = new stdClass();
+			$std_file->ziped = false;
+			$std_file->message = "File(s) zipped failed";
+			$std_file->error = true;
+
+		}
+
+		return $std_file;
+
+	}
+
 
 	/**
 	 * Simply way of checking file permissions.
@@ -1838,7 +2061,6 @@ class FilesystemX {
 
 		// Full path name of the file
 		$this->full_path_filename = $this->destination_folder_user . "/" . $this->filename;
-
 
 		return $this->full_path_filename;
 
